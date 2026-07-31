@@ -1,18 +1,36 @@
 using OpenHarmony.Ndk.Bindings.Generator.Sdk;
+using OpenHarmony.Ndk.Bindings.Generator.Diff;
+using OpenHarmony.Ndk.Bindings.Generator.Inventory;
 
 return ProgramEntry.Run(args);
 
 internal static class ProgramEntry
 {
     private const string Usage =
-        "Usage: BindingGenerator verify-sdk --sdk-root <path> --apis <15,18,20,23,26> " +
-        "[--manifest-directory <path>]";
+        "Usage: BindingGenerator verify-sdk --sdk-root <path> --apis <15,18,20,23,26> [--manifest-directory <path>] | " +
+        "inventory --sdk-root <path> --api <level> --output <path> [--manifest-directory <path>] | " +
+        "diff --before <path> --after <path> --output <path>";
 
     public static int Run(string[] args)
     {
         try
         {
-            if (args.Length == 0 || !string.Equals(args[0], "verify-sdk", StringComparison.Ordinal))
+            if (args.Length == 0)
+            {
+                throw new ArgumentException(Usage);
+            }
+
+            if (string.Equals(args[0], "inventory", StringComparison.Ordinal))
+            {
+                return RunInventory(ParseOptions(args[1..]));
+            }
+
+            if (string.Equals(args[0], "diff", StringComparison.Ordinal))
+            {
+                return RunDiff(ParseOptions(args[1..]));
+            }
+
+            if (!string.Equals(args[0], "verify-sdk", StringComparison.Ordinal))
             {
                 throw new ArgumentException(Usage);
             }
@@ -50,6 +68,28 @@ internal static class ProgramEntry
             Console.Error.WriteLine(exception.Message);
             return 1;
         }
+    }
+
+    private static int RunInventory(IReadOnlyDictionary<string, string> options)
+    {
+        string sdkRoot = RequireOption(options, "--sdk-root");
+        string output = RequireOption(options, "--output");
+        int api = ParseApiLevels(RequireOption(options, "--api")).Single();
+        string manifestDirectory = options.GetValueOrDefault("--manifest-directory", Path.Combine(Environment.CurrentDirectory, "sdk-manifests"));
+        IReadOnlyDictionary<int, SdkManifest> manifests = SdkManifest.LoadDirectory(manifestDirectory);
+        if (!manifests.TryGetValue(api, out SdkManifest? manifest)) throw new InvalidDataException($"No checked-in SDK manifest exists for API {api}: {manifestDirectory}");
+        NativeSdk sdk = SdkLocator.Resolve(sdkRoot, manifest);
+        HeaderInventory.Write(HeaderInventory.Scan(sdk.SysrootPath, api), output);
+        return 0;
+    }
+
+    private static int RunDiff(IReadOnlyDictionary<string, string> options)
+    {
+        ApiDiffDocument diff = ApiDiff.Compare(
+            HeaderInventory.Read(RequireOption(options, "--before")),
+            HeaderInventory.Read(RequireOption(options, "--after")));
+        ApiDiff.Write(diff, RequireOption(options, "--output"));
+        return 0;
     }
 
     private static Dictionary<string, string> ParseOptions(string[] args)

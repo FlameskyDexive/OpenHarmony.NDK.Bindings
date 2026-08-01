@@ -1,0 +1,123 @@
+name: HarmonyOS API26 bindings
+
+on:
+  push:
+    branches: [main, openharmony/api26-bindings]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  API_LEVELS: '15,18,20,23,26'
+
+jobs:
+  managed:
+    name: Managed generator and binding tests
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: Restore tools
+        shell: pwsh
+        run: dotnet tool restore
+      - name: Test solution
+        shell: pwsh
+        run: dotnet test OpenHarmony.NDK.Bindings.sln --configuration Release --verbosity minimal
+      - name: Check formatting and tracked changes
+        shell: pwsh
+        run: |
+          git diff --check
+          if ((git status --porcelain)) { throw 'The test job changed tracked files.' }
+
+  sdk-and-regeneration:
+    name: SDK manifests, regeneration and coverage
+    runs-on: [self-hosted, Windows, harmonyos-sdk]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: Resolve SDK root
+        id: sdk
+        shell: pwsh
+        run: |
+          $sdkRoot = if ($env:OPENHARMONY_SDK_ROOT) { $env:OPENHARMONY_SDK_ROOT } else { Join-Path $env:LOCALAPPDATA 'OpenHarmony\Sdk' }
+          if (-not (Test-Path -LiteralPath $sdkRoot)) { throw "HarmonyOS SDK root not found: $sdkRoot" }
+          "root=$sdkRoot" >> $env:GITHUB_OUTPUT
+      - name: Verify checked-in SDK manifests
+        shell: pwsh
+        env:
+          SDK_ROOT: ${{ steps.sdk.outputs.root }}
+        run: dotnet run --project tools/BindingGenerator --configuration Release -- verify-sdk --sdk-root "$env:SDK_ROOT" --apis $env:API_LEVELS
+      - name: Regenerate inventories twice and compare bytes
+        shell: pwsh
+        env:
+          SDK_ROOT: ${{ steps.sdk.outputs.root }}
+        run: |
+          $first = Join-Path $env:RUNNER_TEMP 'ohos-inventory-1'
+          $second = Join-Path $env:RUNNER_TEMP 'ohos-inventory-2'
+          New-Item -ItemType Directory -Force $first, $second | Out-Null
+          foreach ($api in 15, 18, 20, 23, 26) {
+            dotnet run --project tools/BindingGenerator --configuration Release -- inventory --sdk-root "$env:SDK_ROOT" --api $api --output (Join-Path $first "api$api.json")
+            dotnet run --project tools/BindingGenerator --configuration Release -- inventory --sdk-root "$env:SDK_ROOT" --api $api --output (Join-Path $second "api$api.json")
+          }
+          $left = Get-ChildItem $first -File | Sort-Object Name
+          foreach ($file in $left) {
+            $other = Join-Path $second $file.Name
+            if ((Get-FileHash $file.FullName).Hash -ne (Get-FileHash $other).Hash) { throw "Non-deterministic inventory: $($file.Name)" }
+          }
+          dotnet run --project tools/BindingGenerator --configuration Release -- diff --before (Join-Path $first 'api23.json') --after (Join-Path $first 'api26.json') --output (Join-Path $env:RUNNER_TEMP 'api23-26.json')
+      - name: Check API26 public-kit coverage
+        shell: pwsh
+        env:
+          SDK_ROOT: ${{ steps.sdk.outputs.root }}
+        run: |
+          $sysroot = Join-Path $env:SDK_ROOT '26.0.0\native\sysroot'
+          dotnet run --project tools/BindingGenerator --configuration Release -- coverage --sysroot "$sysroot" --config generator-configs/public-kits.json --output (Join-Path $env:RUNNER_TEMP 'public-kit-coverage.json')
+      - name: Upload inventory evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: api26-binding-inventory
+          path: |
+            ${{ runner.temp }}/api23-26.json
+            ${{ runner.temp }}/public-kit-coverage.json
+
+  abi:
+    name: ABI probe ${{ matrix.api }} ${{ matrix.abi }}
+    needs: [managed, sdk-and-regeneration]
+    runs-on: [self-hosted, Windows, harmonyos-sdk]
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [15, 18, 20, 23, 26]
+        abi: [arm64-v8a, x86_64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: Compile native ABI probe
+        shell: pwsh
+        env:
+          OPENHARMONY_SDK_ROOT: ${{ env.OPENHARMONY_SDK_ROOT }}
+        run: |
+          $sdkRoot = if ($env:OPENHARMONY_SDK_ROOT) { $env:OPENHARMONY_SDK_ROOT } else { Join-Path $env:LOCALAPPDATA 'OpenHarmony\Sdk' }
+          ./tools/run-abi-matrix.ps1 -SdkRoot $sdkRoot -Apis ${{ matrix.api }} -Abis '${{ matrix.abi }}' -OutputRoot "artifacts/abi-matrix"
+          $object = "artifacts/abi-matrix/api${{ matrix.api }}-${{ matrix.abi }}.o"
+          $llvmReadobj = Join-Path $sdkRoot '26.0.0\native\llvm\bin\llvm-readobj.exe'
+          if (-not (Test-Path $llvmReadobj)) { $llvmReadobj = 'llvm-readobj' }
+          & $llvmReadobj --file-headers $object
+          if ($LASTEXITCODE -ne 0) { throw "Unable to inspect $object" }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: abi-probe-${{ matrix.api }}-${{ matrix.abi }}
+          path: artifacts/abi-matrix/*.o

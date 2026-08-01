@@ -1,0 +1,6 @@
+{
+  "name": "arkui",
+  "apiLevel": 26,
+  "headers": ["arkui/native_interface.h", "arkui/native_node.h", "arkui/native_interface_accessibility.h"],
+  "libraries": ["libace_ndk.z.so"]
+}

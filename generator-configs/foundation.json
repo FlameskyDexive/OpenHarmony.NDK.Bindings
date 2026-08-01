@@ -1,0 +1,26 @@
+{
+  "name": "foundation",
+  "apiLevel": 26,
+  "headers": [
+    "hilog/log.h",
+    "filemanagement/file_uri/oh_file_uri.h",
+    "filemanagement/fileio/oh_fileio.h",
+    "rawfile/raw_file.h",
+    "rawfile/raw_file_manager.h",
+    "resourcemanager/ohresmgr.h",
+    "native_buffer/native_buffer.h",
+    "native_buffer/buffer_common.h",
+    "native_window/external_window.h",
+    "native_image/native_image.h"
+  ],
+  "libraries": [
+    "libhilog_ndk.z.so",
+    "libohfileuri.so",
+    "libohfileio.so",
+    "librawfile.z.so",
+    "libohresmgr.so",
+    "libnative_buffer.so",
+    "libnative_window.so",
+    "libnative_image.so"
+  ]
+}

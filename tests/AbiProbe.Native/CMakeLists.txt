@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 3.16)
+project(openharmony_abi_probe CXX)
+add_executable(abi_probe abi_probe.c)
+set_source_files_properties(abi_probe.c PROPERTIES LANGUAGE CXX)
+target_compile_features(abi_probe PRIVATE cxx_std_14)

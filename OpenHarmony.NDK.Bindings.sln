@@ -17,6 +17,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BindingGenerator.Tests", "t
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenHarmony.NDK.Bindings.Tests", "tests\OpenHarmony.NDK.Bindings.Tests\OpenHarmony.NDK.Bindings.Tests.csproj", "{BF7C3420-150C-4C2F-BA0F-57AC4F48AF28}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AbiProbe.Managed", "tests\AbiProbe.Managed\AbiProbe.Managed.csproj", "{63392334-BD4F-4EFC-92C5-3FD2FEABB77A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -87,6 +89,18 @@ Global
 		{BF7C3420-150C-4C2F-BA0F-57AC4F48AF28}.Release|x64.Build.0 = Release|Any CPU
 		{BF7C3420-150C-4C2F-BA0F-57AC4F48AF28}.Release|x86.ActiveCfg = Release|Any CPU
 		{BF7C3420-150C-4C2F-BA0F-57AC4F48AF28}.Release|x86.Build.0 = Release|Any CPU
+		{63392334-BD4F-4EFC-92C5-3FD2FEABB77A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{63392334-BD4F-4EFC-92C5-3FD2FEABB77A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{63392334-BD4F-4EFC-92C5-3FD2FEABB77A}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{63392334-BD4F-4EFC-92C5-3FD2FEABB77A}.Debug|x64.Build.0 = Debug|Any CPU
+		{63392334-BD4F-4EFC-92C5-3FD2FEABB77A}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{63392334-BD4F-4EFC-92C5-3FD2FEABB77A}.Debug|x86.Build.0 = Debug|Any CPU
+		{63392334-BD4F-4EFC-92C5-3FD2FEABB77A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{63392334-BD4F-4EFC-92C5-3FD2FEABB77A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{63392334-BD4F-4EFC-92C5-3FD2FEABB77A}.Release|x64.ActiveCfg = Release|Any CPU
+		{63392334-BD4F-4EFC-92C5-3FD2FEABB77A}.Release|x64.Build.0 = Release|Any CPU
+		{63392334-BD4F-4EFC-92C5-3FD2FEABB77A}.Release|x86.ActiveCfg = Release|Any CPU
+		{63392334-BD4F-4EFC-92C5-3FD2FEABB77A}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -95,5 +109,6 @@ Global
 		{CFFDFC7F-1003-48E8-ADD9-2C70DBFB1347} = {07C2787E-EAC7-C090-1BA3-A61EC2A24D84}
 		{69194373-2B29-45F0-8807-A4D1B6B26515} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{BF7C3420-150C-4C2F-BA0F-57AC4F48AF28} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{63392334-BD4F-4EFC-92C5-3FD2FEABB77A} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 EndGlobal

@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using OpenHarmony.NDK.Bindings.Native.Generated.ComponentInput;
+using OpenHarmony.NDK.Bindings.Native.Generated.IPC;
 using OpenHarmony.NDK.Bindings.Native.Manual.IPC;
 using OpenHarmony.NDK.Bindings.Native.Manual.NodeApi;
 
@@ -20,6 +21,15 @@ public sealed unsafe class IpcNodeComponentTests
         Assert.NotEqual(0, ipc.RequestFunction);
         Assert.NotEqual(0, ipc.DestroyFunction);
         Assert.NotEqual(0, napi.FunctionPointer);
+    }
+
+    [Fact]
+    public void Ipc_message_option_matches_pack4_native_layout()
+    {
+        Assert.Equal(0, Marshal.OffsetOf<IpcMessageOption>(nameof(IpcMessageOption.Mode)).ToInt32());
+        Assert.Equal(4, Marshal.OffsetOf<IpcMessageOption>(nameof(IpcMessageOption.Timeout)).ToInt32());
+        Assert.Equal(8, Marshal.OffsetOf<IpcMessageOption>(nameof(IpcMessageOption.Reserved)).ToInt32());
+        Assert.Equal(IntPtr.Size == 8 ? 16 : 12, Marshal.SizeOf<IpcMessageOption>());
     }
 
     [Fact]

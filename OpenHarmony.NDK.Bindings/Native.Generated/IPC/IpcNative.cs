@@ -7,11 +7,12 @@ namespace OpenHarmony.NDK.Bindings.Native.Generated.IPC;
 [StructLayout(LayoutKind.Sequential)] public struct OHIPCRemoteProxy { }
 [StructLayout(LayoutKind.Sequential)] public struct OHIPCDeathRecipient { }
 
-[StructLayout(LayoutKind.Sequential)]
-public struct IpcMessageOption
+[StructLayout(LayoutKind.Sequential, Pack = 4)]
+public unsafe struct IpcMessageOption
 {
     public int Mode;
-    public int Reserved;
+    public uint Timeout;
+    public void* Reserved;
 }
 
 public static unsafe partial class IpcNative

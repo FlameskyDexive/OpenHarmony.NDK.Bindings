@@ -1,0 +1,6 @@
+{
+  "name": "component-input",
+  "apiLevel": 26,
+  "headers": ["ace/xcomponent/native_interface_xcomponent.h", "multimodalinput/oh_input_manager.h", "inputmethod/inputmethod_controller_capi.h"],
+  "libraries": ["libnative_xcomponent.so", "libohinput.so", "libohinputmethod.so"]
+}

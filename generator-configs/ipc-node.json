@@ -1,0 +1,6 @@
+{
+  "name": "ipc-node",
+  "apiLevel": 26,
+  "headers": ["IPCKit/ipc_cparcel.h", "IPCKit/ipc_cremote_object.h", "IPCKit/ipc_cskeleton.h", "napi/native_api.h"],
+  "libraries": ["libipc_capi.so", "libace_napi.z.so"]
+}

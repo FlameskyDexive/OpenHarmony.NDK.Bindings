@@ -1,6 +1,7 @@
 using OpenHarmony.Ndk.Bindings.Generator.Sdk;
 using OpenHarmony.Ndk.Bindings.Generator.Diff;
 using OpenHarmony.Ndk.Bindings.Generator.Inventory;
+using OpenHarmony.Ndk.Bindings.Generator.Coverage;
 
 return ProgramEntry.Run(args);
 
@@ -9,7 +10,8 @@ internal static class ProgramEntry
     private const string Usage =
         "Usage: BindingGenerator verify-sdk --sdk-root <path> --apis <15,18,20,23,26> [--manifest-directory <path>] | " +
         "inventory --sdk-root <path> --api <level> --output <path> [--manifest-directory <path>] | " +
-        "diff --before <path> --after <path> --output <path>";
+        "diff --before <path> --after <path> --output <path> | " +
+        "coverage --sysroot <path> --config <path> --output <path>";
 
     public static int Run(string[] args)
     {
@@ -28,6 +30,11 @@ internal static class ProgramEntry
             if (string.Equals(args[0], "diff", StringComparison.Ordinal))
             {
                 return RunDiff(ParseOptions(args[1..]));
+            }
+
+            if (string.Equals(args[0], "coverage", StringComparison.Ordinal))
+            {
+                return RunCoverage(ParseOptions(args[1..]));
             }
 
             if (!string.Equals(args[0], "verify-sdk", StringComparison.Ordinal))
@@ -89,6 +96,16 @@ internal static class ProgramEntry
             HeaderInventory.Read(RequireOption(options, "--before")),
             HeaderInventory.Read(RequireOption(options, "--after")));
         ApiDiff.Write(diff, RequireOption(options, "--output"));
+        return 0;
+    }
+
+    private static int RunCoverage(IReadOnlyDictionary<string, string> options)
+    {
+        PublicKitAllowlist allowlist = PublicKitCoverage.Load(RequireOption(options, "--config"));
+        PublicKitCoverageReport report = PublicKitCoverage.Scan(RequireOption(options, "--sysroot"), allowlist);
+        PublicKitCoverage.Write(report, RequireOption(options, "--output"));
+        if (report.MissingHeaderRoots.Count != 0 || report.UnexplainedHeaderRoots.Count != 0)
+            throw new InvalidDataException($"API {report.ApiLevel} public-kit coverage is incomplete: missing={report.MissingHeaderRoots.Count}, unexplained={report.UnexplainedHeaderRoots.Count}.");
         return 0;
     }
 

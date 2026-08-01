@@ -1,0 +1,37 @@
+{
+  "apiLevel": 26,
+  "headerRoots": [
+    "AbilityKit", "accesstoken", "ace", "ark_runtime", "arkui", "asset", "background_process_manager",
+    "BasicServicesKit", "bundle", "ConnectivityKit", "ContentEmbedKit", "CryptoArchitectureKit", "database",
+    "DataProtectionKit", "ddk", "device_certificate", "distributedhardware", "drm", "EGL", "ffrt",
+    "filemanagement", "fortify", "GameControllerKit", "GL", "GLES2", "GLES3", "hiappevent", "hicollie",
+    "hid", "hidebug", "hitrace", "hilog", "huks", "i18n", "info", "inputmethod", "IPCKit", "KHR",
+    "LocationKit", "mindspore", "misc", "multimedia", "multimodalinput", "napi", "native_buffer",
+    "native_color_space_manager", "native_display_soloist", "native_drawing", "native_effect", "native_fence",
+    "native_image", "native_vsync", "native_window", "network", "neural_network_runtime", "NotificationKit",
+    "ohaudio", "ohaudiosuite", "ohcamera", "ohmidi", "purgeable_memory", "qos", "rawfile", "rdma",
+    "resourcemanager", "scsi_peripheral", "sensors", "SLES", "sound", "TEEKit", "telephony",
+    "transient_task", "unicode", "usb", "usb_serial", "uv", "video", "vk_video", "vulkan", "web",
+    "window_manager"
+  ],
+  "excludedRoots": [
+    { "path": "aarch64-linux-ohos", "reason": "architecture-specific compiler headers" },
+    { "path": "x86_64-linux-ohos", "reason": "architecture-specific compiler headers" },
+    { "path": "arm-linux-ohos", "reason": "architecture-specific compiler headers" },
+    { "path": "i686-linux-ohos", "reason": "architecture-specific compiler headers" },
+    { "path": "asm-generic", "reason": "kernel/libc implementation headers" },
+    { "path": "asm-loongarch", "reason": "kernel/libc implementation headers" },
+    { "path": "asm-mips", "reason": "kernel/libc implementation headers" },
+    { "path": "asm-riscv", "reason": "kernel/libc implementation headers" },
+    { "path": "linux", "reason": "kernel/libc implementation headers" },
+    { "path": "mtd", "reason": "platform kernel headers" },
+    { "path": "arpa", "reason": "platform libc headers" },
+    { "path": "bits", "reason": "platform libc headers" },
+    { "path": "net", "reason": "platform libc headers" },
+    { "path": "netinet", "reason": "platform libc headers" },
+    { "path": "netpacket", "reason": "platform libc headers" },
+    { "path": "scsi", "reason": "platform kernel headers" },
+    { "path": "sys", "reason": "platform libc headers" },
+    { "path": "xen", "reason": "platform kernel headers" }
+  ]
+}

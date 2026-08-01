@@ -19,6 +19,15 @@ dotnet run --project tools/BindingGenerator/BindingGenerator.csproj -- `
 
 API15/18/20/23/26 的 SDK manifest 已在 `sdk-manifests/` 固化，并由 `verify-sdk` 校验包版本、发布通道、manifest SHA-256、Clang、sysroot 和 CMake toolchain。ClangSharp 工具版本固定在 `.config/dotnet-tools.json`。
 
+API26 公共 kit 覆盖清单位于 `generator-configs/public-kits.json`。coverage 命令会比较 SDK 顶层头文件根目录；C++ 专属、架构专属和内核/libc 目录必须在 `excludedRoots` 中写明原因：
+
+```powershell
+dotnet run --project tools/BindingGenerator/BindingGenerator.csproj -- `
+  coverage --sysroot C:\Users\Inxep\AppData\Local\OpenHarmony\Sdk\26.0.0\native\sysroot `
+  --config generator-configs/public-kits.json `
+  --output artifacts/public-kit-coverage-api26.json
+```
+
 ## 构建和测试
 
 ```powershell

@@ -127,9 +127,11 @@ public sealed class SdkLocatorTests
 
             Directory.CreateDirectory(Path.GetDirectoryName(clangPath)!);
             Directory.CreateDirectory(sysrootPath);
+            Directory.CreateDirectory(Path.Combine(sysrootPath, "usr", "include"));
             Directory.CreateDirectory(Path.GetDirectoryName(toolchainFile)!);
             File.WriteAllText(clangPath, string.Empty);
             File.WriteAllText(toolchainFile, string.Empty);
+            File.WriteAllText(Path.Combine(sysrootPath, "usr", "include", "sample.h"), "sample");
             File.WriteAllText(
                 packageManifestPath,
                 $$"""
@@ -166,7 +168,12 @@ public sealed class SdkLocatorTests
                 FolderName,
                 PackageVersion,
                 ReleaseType,
-                sha256);
+                sha256,
+                true,
+                null,
+                SdkFingerprint.ComputeSysrootSha256(SysrootPath),
+                SdkFingerprint.ComputeFileSha256(ToolchainFile),
+                SdkFingerprint.ComputeHeaderInventorySha256(SysrootPath, ApiLevel));
         }
 
         public void Dispose()

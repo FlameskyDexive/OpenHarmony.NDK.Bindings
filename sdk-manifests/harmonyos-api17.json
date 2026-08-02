@@ -1,0 +1,6 @@
+{
+  "apiLevel": 17,
+  "harmonyVersion": "5.0.5",
+  "nativeSdkAvailable": false,
+  "unavailableReason": "No independent Native SDK package is installable for API 17; compilation is skipped and this remains an emulator target."
+}

@@ -10,7 +10,10 @@ public sealed record NativeSdk(
     string ClangPath,
     string SysrootPath,
     string ToolchainFile,
-    string PackageManifestPath);
+    string PackageManifestPath,
+    string SysrootSha256,
+    string ToolchainFileSha256,
+    string HeaderInventorySha256);
 
 public static class SdkLocator
 {
@@ -19,8 +22,15 @@ public static class SdkLocator
         ArgumentException.ThrowIfNullOrWhiteSpace(sdkRoot);
         ArgumentNullException.ThrowIfNull(expected);
 
+        if (!expected.NativeSdkAvailable)
+        {
+            throw new InvalidDataException(
+                $"HarmonyOS API {expected.ApiLevel} has no installable Native SDK and is not processed for compilation. " +
+                $"{expected.UnavailableReason}");
+        }
+
         string rootPath = Path.GetFullPath(sdkRoot);
-        string nativePath = Path.Combine(rootPath, expected.FolderName, "native");
+        string nativePath = Path.Combine(rootPath, expected.FolderName!, "native");
         string packageManifestPath = RequireFile(
             Path.Combine(nativePath, "oh-uni-package.json"),
             $"HarmonyOS API {expected.ApiLevel} native package manifest");
@@ -32,8 +42,8 @@ public static class SdkLocator
                 $"HarmonyOS API {expected.ApiLevel} native package manifest is empty: {packageManifestPath}");
 
         RequireEqual("API version", expected.ApiLevel.ToString(), package.ApiVersion, packageManifestPath);
-        RequireEqual("package version", expected.PackageVersion, package.Version, packageManifestPath);
-        RequireEqual("release type", expected.ReleaseType, package.ReleaseType, packageManifestPath);
+        RequireEqual("package version", expected.PackageVersion!, package.Version, packageManifestPath);
+        RequireEqual("release type", expected.ReleaseType!, package.ReleaseType, packageManifestPath);
 
         string actualSha256 = Convert.ToHexString(
             SHA256.HashData(File.ReadAllBytes(packageManifestPath)));
@@ -51,6 +61,29 @@ public static class SdkLocator
         string toolchainFile = RequireFile(
             Path.Combine(nativePath, "build", "cmake", "ohos.toolchain.cmake"),
             $"HarmonyOS API {expected.ApiLevel} CMake toolchain");
+        string sysrootSha256 = SdkFingerprint.ComputeSysrootSha256(sysrootPath);
+        RequireEqual(
+            "sysroot SHA256",
+            expected.SysrootSha256!,
+            sysrootSha256,
+            sysrootPath,
+            StringComparison.OrdinalIgnoreCase);
+        string toolchainFileSha256 = SdkFingerprint.ComputeFileSha256(toolchainFile);
+        RequireEqual(
+            "CMake toolchain SHA256",
+            expected.ToolchainFileSha256!,
+            toolchainFileSha256,
+            toolchainFile,
+            StringComparison.OrdinalIgnoreCase);
+        string headerInventorySha256 = SdkFingerprint.ComputeHeaderInventorySha256(
+            sysrootPath,
+            expected.ApiLevel);
+        RequireEqual(
+            "header inventory SHA256",
+            expected.HeaderInventorySha256!,
+            headerInventorySha256,
+            sysrootPath,
+            StringComparison.OrdinalIgnoreCase);
 
         return new NativeSdk(
             expected,
@@ -58,7 +91,10 @@ public static class SdkLocator
             clangPath,
             sysrootPath,
             toolchainFile,
-            packageManifestPath);
+            packageManifestPath,
+            sysrootSha256,
+            toolchainFileSha256,
+            headerInventorySha256);
     }
 
     private static string ResolveExecutable(string directory, string executableName)

@@ -91,6 +91,19 @@ public sealed class SdkManifestCatalogTests
     }
 
     [Fact]
+    public void Sdk_fingerprints_are_deterministic()
+    {
+        using TemporaryManifestSdk fixture = TemporaryManifestSdk.Create();
+
+        Assert.Equal(
+            SdkFingerprint.ComputeSysrootSha256(fixture.SysrootPath),
+            SdkFingerprint.ComputeSysrootSha256(fixture.SysrootPath));
+        Assert.Equal(
+            SdkFingerprint.ComputeHeaderInventorySha256(fixture.SysrootPath, 13),
+            SdkFingerprint.ComputeHeaderInventorySha256(fixture.SysrootPath, 13));
+    }
+
+    [Fact]
     public void Cli_rejects_api25_with_the_exact_message()
     {
         string repoRoot = FindRepoRoot();

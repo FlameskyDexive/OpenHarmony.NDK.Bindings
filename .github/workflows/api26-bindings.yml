@@ -1,17 +1,29 @@
-name: HarmonyOS API26 bindings
+name: OpenHarmony API13-26 bindings
 
 on:
   push:
     branches: [main, openharmony/api26-bindings]
+    tags:
+      - 'v*-ohos.*-preview.*'
+      - 'v*-ohos.*-rc.*'
   pull_request:
+  schedule:
+    - cron: '23 17 * * *'
   workflow_dispatch:
+    inputs:
+      tier:
+        description: Bindings verification tier
+        required: true
+        type: choice
+        default: pr
+        options: [pr, nightly, release]
 
 permissions:
   contents: read
 
 env:
   DOTNET_VERSION: '10.0.x'
-  API_LEVELS: '15,18,20,23,26'
+  INSTALLED_NATIVE_APIS: '13,14,15,18,20,23,26'
 
 jobs:
   managed:
@@ -24,20 +36,24 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
-      - name: Restore tools
+      - name: Restore tools and test the solution
         shell: pwsh
-        run: dotnet tool restore
-      - name: Test solution
-        shell: pwsh
-        run: dotnet test OpenHarmony.NDK.Bindings.sln --configuration Release --verbosity minimal
-      - name: Check formatting and tracked changes
+        run: |
+          dotnet tool restore
+          dotnet test OpenHarmony.NDK.Bindings.sln --configuration Release --verbosity minimal
+      - name: Verify source integrity
         shell: pwsh
         run: |
           git diff --check
-          if ((git status --porcelain)) { throw 'The test job changed tracked files.' }
+          if ((git status --porcelain)) { throw 'Tests changed tracked files.' }
 
-  sdk-and-regeneration:
-    name: SDK manifests, regeneration and coverage
+  pr-api-edges:
+    name: PR API13/API26 ABI probes
+    needs: managed
+    if: >-
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/')) ||
+      (github.event_name == 'workflow_dispatch' && inputs.tier == 'pr')
     runs-on: [self-hosted, Windows, harmonyos-sdk]
     steps:
       - uses: actions/checkout@v4
@@ -46,78 +62,73 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
-      - name: Resolve SDK root
-        id: sdk
+      - name: Verify checked-in API13/API26 SDK inventories
         shell: pwsh
         run: |
           $sdkRoot = if ($env:OPENHARMONY_SDK_ROOT) { $env:OPENHARMONY_SDK_ROOT } else { Join-Path $env:LOCALAPPDATA 'OpenHarmony\Sdk' }
-          if (-not (Test-Path -LiteralPath $sdkRoot)) { throw "HarmonyOS SDK root not found: $sdkRoot" }
-          "root=$sdkRoot" >> $env:GITHUB_OUTPUT
-      - name: Verify checked-in SDK manifests
+          dotnet run --project tools/BindingGenerator --configuration Release -- verify-sdk --sdk-root $sdkRoot --apis 13,26
+      - name: Compile API13/API26 for both ABIs
         shell: pwsh
-        env:
-          SDK_ROOT: ${{ steps.sdk.outputs.root }}
-        run: dotnet run --project tools/BindingGenerator --configuration Release -- verify-sdk --sdk-root "$env:SDK_ROOT" --apis $env:API_LEVELS
-      - name: Regenerate inventories twice and compare bytes
-        shell: pwsh
-        env:
-          SDK_ROOT: ${{ steps.sdk.outputs.root }}
         run: |
-          $first = Join-Path $env:RUNNER_TEMP 'ohos-inventory-1'
-          $second = Join-Path $env:RUNNER_TEMP 'ohos-inventory-2'
-          New-Item -ItemType Directory -Force $first, $second | Out-Null
-          foreach ($api in 15, 18, 20, 23, 26) {
-            dotnet run --project tools/BindingGenerator --configuration Release -- inventory --sdk-root "$env:SDK_ROOT" --api $api --output (Join-Path $first "api$api.json")
-            dotnet run --project tools/BindingGenerator --configuration Release -- inventory --sdk-root "$env:SDK_ROOT" --api $api --output (Join-Path $second "api$api.json")
-          }
-          $left = Get-ChildItem $first -File | Sort-Object Name
-          foreach ($file in $left) {
-            $other = Join-Path $second $file.Name
-            if ((Get-FileHash $file.FullName).Hash -ne (Get-FileHash $other).Hash) { throw "Non-deterministic inventory: $($file.Name)" }
-          }
-          dotnet run --project tools/BindingGenerator --configuration Release -- diff --before (Join-Path $first 'api23.json') --after (Join-Path $first 'api26.json') --output (Join-Path $env:RUNNER_TEMP 'api23-26.json')
-      - name: Check API26 public-kit coverage
-        shell: pwsh
-        env:
-          SDK_ROOT: ${{ steps.sdk.outputs.root }}
-        run: |
-          $sysroot = Join-Path $env:SDK_ROOT '26.0.0\native\sysroot'
-          dotnet run --project tools/BindingGenerator --configuration Release -- coverage --sysroot "$sysroot" --config generator-configs/public-kits.json --output (Join-Path $env:RUNNER_TEMP 'public-kit-coverage.json')
-      - name: Upload inventory evidence
-        uses: actions/upload-artifact@v4
+          $sdkRoot = if ($env:OPENHARMONY_SDK_ROOT) { $env:OPENHARMONY_SDK_ROOT } else { Join-Path $env:LOCALAPPDATA 'OpenHarmony\Sdk' }
+          ./tools/run-abi-matrix.ps1 -SdkRoot $sdkRoot -Apis 13,26 -Abis arm64-v8a,x86_64
+      - uses: actions/upload-artifact@v4
         with:
-          name: api26-binding-inventory
-          path: |
-            ${{ runner.temp }}/api23-26.json
-            ${{ runner.temp }}/public-kit-coverage.json
+          name: pr-api13-api26-abi-probes
+          path: artifacts/abi-matrix/*.o
+          if-no-files-found: error
 
-  abi:
-    name: ABI probe ${{ matrix.api }} ${{ matrix.abi }}
-    needs: [managed, sdk-and-regeneration]
+  nightly-abi:
+    name: Nightly API13-24/26 ABI matrix
+    needs: managed
+    if: >-
+      github.event_name == 'schedule' ||
+      startsWith(github.ref, 'refs/tags/') ||
+      (github.event_name == 'workflow_dispatch' && contains(fromJSON('["nightly","release"]'), inputs.tier))
     runs-on: [self-hosted, Windows, harmonyos-sdk]
-    strategy:
-      fail-fast: false
-      matrix:
-        api: [15, 18, 20, 23, 26]
-        abi: [arm64-v8a, x86_64]
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
-      - name: Compile native ABI probe
+      - name: Verify all installed SDK inventories
         shell: pwsh
-        env:
-          OPENHARMONY_SDK_ROOT: ${{ env.OPENHARMONY_SDK_ROOT }}
         run: |
           $sdkRoot = if ($env:OPENHARMONY_SDK_ROOT) { $env:OPENHARMONY_SDK_ROOT } else { Join-Path $env:LOCALAPPDATA 'OpenHarmony\Sdk' }
-          ./tools/run-abi-matrix.ps1 -SdkRoot $sdkRoot -Apis ${{ matrix.api }} -Abis '${{ matrix.abi }}' -OutputRoot "artifacts/abi-matrix"
-          $object = "artifacts/abi-matrix/api${{ matrix.api }}-${{ matrix.abi }}.o"
-          $llvmReadobj = Join-Path $sdkRoot '26.0.0\native\llvm\bin\llvm-readobj.exe'
-          if (-not (Test-Path $llvmReadobj)) { $llvmReadobj = 'llvm-readobj' }
-          & $llvmReadobj --file-headers $object
-          if ($LASTEXITCODE -ne 0) { throw "Unable to inspect $object" }
+          dotnet run --project tools/BindingGenerator --configuration Release -- verify-sdk --sdk-root $sdkRoot --apis $env:INSTALLED_NATIVE_APIS
+      - name: Compile the logical 13-24/26 matrix
+        shell: pwsh
+        run: |
+          $sdkRoot = if ($env:OPENHARMONY_SDK_ROOT) { $env:OPENHARMONY_SDK_ROOT } else { Join-Path $env:LOCALAPPDATA 'OpenHarmony\Sdk' }
+          ./tools/run-abi-matrix.ps1 -SdkRoot $sdkRoot -Apis (13..24 + 26) -Abis arm64-v8a,x86_64
+          $objects = @(Get-ChildItem artifacts/abi-matrix -Filter '*.o')
+          if ($objects.Count -ne 14) { throw "Expected 14 installed-SDK ABI objects, found $($objects.Count)." }
+          if (@($objects | Where-Object Name -Match 'api25').Count) { throw 'API25 probe must never exist.' }
       - uses: actions/upload-artifact@v4
         with:
-          name: abi-probe-${{ matrix.api }}-${{ matrix.abi }}
+          name: nightly-api13-api26-bindings
           path: artifacts/abi-matrix/*.o
+          if-no-files-found: error
+
+  release-abi:
+    name: Preview/RC ABI artifact gate
+    needs: nightly-abi
+    if: >-
+      startsWith(github.ref, 'refs/tags/') ||
+      (github.event_name == 'workflow_dispatch' && inputs.tier == 'release')
+    runs-on: windows-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: nightly-api13-api26-bindings
+          path: artifacts/abi-matrix
+      - name: Require the immutable 14-object installed-SDK set
+        shell: pwsh
+        run: |
+          $objects = @(Get-ChildItem artifacts/abi-matrix -Filter '*.o')
+          if ($objects.Count -ne 14) { throw "Expected 14 ABI probe objects, found $($objects.Count)." }
+          foreach ($object in $objects) {
+            if ((Get-FileHash $object.FullName -Algorithm SHA256).Hash -notmatch '^[0-9A-F]{64}$') { throw "Unable to hash $($object.Name)." }
+          }

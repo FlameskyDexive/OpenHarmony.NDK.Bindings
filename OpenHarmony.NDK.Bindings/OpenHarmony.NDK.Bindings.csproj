@@ -5,6 +5,17 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <IsPackable>true</IsPackable>
+    <PackageId>OpenHarmony.NDK.Bindings</PackageId>
+    <Version Condition="'$(Version)' == ''">10.0.10-ohos.2-preview.1</Version>
+    <Authors>OpenHarmony.NET</Authors>
+    <Description>OpenHarmony Native SDK .NET bindings (N-API, ArkUI XComponent, HiLog, native kits) for NativeAOT player builds.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
 </Project>
